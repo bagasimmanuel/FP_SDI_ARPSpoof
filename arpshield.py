@@ -1,25 +1,21 @@
 import os,sys, subprocess
 from time import sleep, time
 from twilio.rest import Client
+from credentials import *
 
-account_sid = "ACd2aad69d68f473467ef52261ba018d23" #SID Token dari Twilio
-auth_token = "693b2ec7658e4377ae42837f6561a901" #Auth Token dari Twilio
+account_sid = SID_TOKEN #SID Token dari Twilio
+auth_token = TOKEN_AUTH #Auth Token dari Twilio
 
 client = Client(account_sid,auth_token)
-
-
-threshold = 12
-mac_dict = {}
-time_dict = {}
 
 #Checking for root privilleges
 try:
     if os.getuid() != 0:
-        print "ERROR: ARPSHIELD requires root privillege to run"
+        print "Tolong run as sudo"
         os._exit(1)
 except:
     # Its a windows system
-    print "ERROR: ARPSHIELD Cannot run on Windows"
+    print "Hanya support Linux, karena butuh bbrp modul"
     sleep(1.5)
     os._exit(1)
 
@@ -40,10 +36,9 @@ import netifaces
 
 # Selection on Interface (USER)
 available_interface = netifaces.interfaces()
-print("")
-interface = raw_input("Please select the interface you wish to use. {}\n".format(str(available_interface)))
+interface = raw_input("Interface yang mau dicheck?. {}\n".format(str(available_interface)))
 if interface not in available_interface:
-    print "Interface" ,interface ,"not Available"
+    print "Nggak ada interface" ,interface
     exit()
 
 
@@ -57,7 +52,7 @@ def getGateway(txt):
 
         except:
             print("shit happened")
-            return ("192.168.38.2")
+            return ("192.168.1.5")
     elif txt =="ip_of_selected_interface":
         getGateway = sr1(IP(dst="1.1.1.1", ttl=0) / ICMP() / "XXXXXXXXXXX", verbose=False, timeout=2)
         print "Your IP: " , getGateway[IP].dst 
@@ -76,9 +71,10 @@ def getGateway(txt):
 mac_of_selected_interface = get_if_hwaddr(interface)
 gatewayip = getGateway("ip")
 gatewaymac = getGateway(gatewayip)
+# print gatewaymac
 ip_of_selected_interface = getGateway("ip_of_selected_interface")
 
-def check_for_spoof_attack(source, dest, s_mac, gatewaymac, gatewayip, d_mac):
+def check_for_spoof_attack(source, s_mac, gatewaymac, gatewayip):
     if source == gatewayip and s_mac != gatewaymac:
         print("ARP Attack Detected.") 
         #Twilio
@@ -90,16 +86,11 @@ def check_for_spoof_attack(source, dest, s_mac, gatewaymac, gatewayip, d_mac):
         sleep(10)
 
 
-
 def process_packets(packet):
     source = packet.psrc
-    dest = packet.pdst
-    operation = packet.op
     s_mac = packet.hwsrc
-    d_mac = packet.hwdst
-    #print(source,dest,s_mac,operation)
 
-    check_for_spoof_attack(source, dest, s_mac, gatewaymac, gatewayip, d_mac)
+    check_for_spoof_attack(source, s_mac, gatewaymac, gatewayip)
 
 
 print 'Your MAC: ' , mac_of_selected_interface
@@ -108,7 +99,7 @@ choice = input("Enter your choice : ")
 
 if choice == '1':
     os.system("clear")
-    print "ARPSHIELD Started. Any output will be redirected to log file."
+    print "ARPSHIELD Started."
     sniff(filter="arp",prn=process_packets, store=0 )
 elif choice =='2':
     print "Exiting ARPSHIELD."
